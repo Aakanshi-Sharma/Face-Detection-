@@ -1,0 +1,24 @@
+[project]
+name = "face-id-backend"
+version = "0.1.0"
+description = "Offline face identification: who is in the group photo?"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "python-multipart>=0.0.9",
+    "numpy>=1.26,<3",
+    "opencv-python-headless>=4.9",
+    "onnxruntime>=1.18",
+    "faiss-cpu>=1.8",
+    "scipy>=1.11",
+    "pillow>=10.3",
+    "pillow-heif>=0.16",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = ["pytest>=8", "httpx>=0.27"]
