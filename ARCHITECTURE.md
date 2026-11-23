@@ -6,49 +6,20 @@ folder. Nothing is sent anywhere.
 
 ## Diagram
 
-```mermaid
-flowchart LR
-    user([Office user])
+Made with [archify](https://github.com/tt-a1i/archify) from the committed
+source. Every box is backed by file and line references that archify verified
+against the repository (22 references at commit `6489d6f`).
 
-    subgraph browser["Browser on the same laptop"]
-        ui["React UI<br/>folder panel, photo stage, results list"]
-    end
+![Architecture: browser UI, security gateway, FastAPI endpoints, face engine with SCRFD and ArcFace, matcher, and local SQLite, FAISS and model files](docs/images/architecture.png)
 
-    subgraph server["Local server, 127.0.0.1:8000"]
-        gw["Security gateway<br/>host and origin checks, session cookie,<br/>CSRF token, rate and size limits, headers"]
-        api["FastAPI endpoints<br/>/api/gallery, /api/identify, ..."]
-        subgraph pipeline["Face engine (ONNX Runtime, CPU)"]
-            det["SCRFD detector<br/>boxes + 5 landmarks"]
-            align["Align to 112x112"]
-            emb["ArcFace embedder<br/>512-d unit vector"]
-        end
-        match["Matcher<br/>cosine threshold + one-to-one assignment"]
-    end
+- Interactive version (click a box to see its source lines): [`docs/architecture.html`](docs/architecture.html). Download it and open it in a browser.
+- Vector export: [`docs/images/architecture.svg`](docs/images/architecture.svg)
+- Diagram source: [`docs/architecture.archify.json`](docs/architecture.archify.json)
 
-    subgraph disk["Local disk"]
-        sqlite[("SQLite<br/>people, embeddings,<br/>reference cache, results")]
-        faiss[("FAISS index<br/>exact inner-product search")]
-        models[["ONNX model files"]]
-        uploads[["Display copies of group photos"]]
-    end
-
-    user --> ui
-    ui -- "HTTP on loopback" --> gw --> api
-    api --> det --> align --> emb
-    emb -- "enrol: one vector per person" --> sqlite
-    sqlite -- "rebuild when changed" --> faiss
-    emb -- "identify: one vector per face" --> match
-    faiss -- "similarities" --> match
-    match -- "names or Unknown" --> api
-    api --> uploads
-    models -.-> det
-    models -.-> emb
-```
-
-> The task asks for this diagram to be produced with
-> [archify](https://github.com/tt-a1i/archify). The archify export goes in
-> `docs/images/architecture.png` and is linked here once generated; the Mermaid
-> version above describes the same system.
+How to read it: solid green arrows are the main path of a request, the dashed
+red arrow is the security check every request must pass, and dashed purple
+arrows are things that happen once (loading model files, rebuilding the search
+index from SQLite).
 
 ## Components
 

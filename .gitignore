@@ -24,3 +24,6 @@ Thumbs.db
 
 # Local tool settings
 .claude/
+
+# Archify working folders (the diagram source is docs/architecture.archify.json)
+.archify/

@@ -1,0 +1,198 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Who is in the photo? Offline face identification on one laptop",
+    "locale": "en",
+    "output": ".archify/architecture-face-id-20261123-143510/face-id.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/Aakanshi-Sharma/Face-Detection-.git",
+      "provider": "github",
+      "revision": "6489d6f6c2694b463f37af0ee0926cb0fca2228e"
+    }
+  },
+  "layout": { "mode": "auto" },
+  "components": [
+    {
+      "id": "office-user",
+      "type": "external",
+      "label": "Office user",
+      "sublabel": "browser on the same laptop"
+    },
+    {
+      "id": "react-ui",
+      "type": "frontend",
+      "label": "React UI",
+      "sublabel": "folder panel, photo, results list",
+      "sources": [
+        { "path": "frontend/src/App.tsx", "line": 40, "end_line": 76, "label": "enrol a folder" },
+        { "path": "frontend/src/App.tsx", "line": 79, "end_line": 101, "label": "identify a photo" },
+        { "path": "frontend/src/api.ts", "line": 68, "end_line": 91, "label": "session + CSRF header" }
+      ]
+    },
+    {
+      "id": "security-gateway",
+      "type": "security",
+      "label": "Security gateway",
+      "sublabel": "host, origin, session, CSRF, limits",
+      "tag": "every request",
+      "sources": [
+        { "path": "backend/app/security.py", "line": 116, "end_line": 151, "label": "request checks" },
+        { "path": "backend/app/security.py", "line": 175, "end_line": 208, "label": "ASGI middleware" },
+        { "path": "backend/app/main.py", "line": 50, "end_line": 52, "label": "installed on the app" }
+      ]
+    },
+    {
+      "id": "api-endpoints",
+      "type": "backend",
+      "label": "FastAPI endpoints",
+      "sublabel": "enrol, identify, rematch",
+      "sources": [
+        { "path": "backend/app/main.py", "line": 131, "end_line": 164, "label": "enrol one photo" },
+        { "path": "backend/app/main.py", "line": 215, "end_line": 256, "label": "identify a group photo" },
+        { "path": "backend/app/main.py", "line": 196, "end_line": 212, "label": "match and build result" }
+      ]
+    },
+    {
+      "id": "face-engine",
+      "type": "backend",
+      "label": "Face engine",
+      "sublabel": "detect, align, embed",
+      "sources": [
+        { "path": "backend/app/engine.py", "line": 46, "end_line": 72, "label": "reference photo" },
+        { "path": "backend/app/engine.py", "line": 75, "end_line": 93, "label": "group photo" }
+      ]
+    },
+    {
+      "id": "scrfd-detector",
+      "type": "backend",
+      "label": "SCRFD detector",
+      "sublabel": "boxes + 5 landmarks",
+      "tag": "ONNX Runtime, CPU",
+      "sources": [
+        { "path": "backend/app/detector.py", "line": 52, "end_line": 138, "label": "detect faces" }
+      ]
+    },
+    {
+      "id": "arcface-embedder",
+      "type": "backend",
+      "label": "ArcFace embedder",
+      "sublabel": "112x112 crop to 512-d vector",
+      "tag": "ONNX Runtime, CPU",
+      "sources": [
+        { "path": "backend/app/embedder.py", "line": 48, "end_line": 50, "label": "align by landmarks" },
+        { "path": "backend/app/embedder.py", "line": 53, "end_line": 90, "label": "embed with mirror" }
+      ]
+    },
+    {
+      "id": "matcher",
+      "type": "backend",
+      "label": "Matcher",
+      "sublabel": "threshold 0.35, one name per person",
+      "sources": [
+        { "path": "backend/app/matching.py", "line": 20, "end_line": 36, "label": "FAISS similarity search" },
+        { "path": "backend/app/matching.py", "line": 39, "end_line": 83, "label": "name or Unknown" },
+        { "path": "backend/app/config.py", "line": 35, "end_line": 35, "label": "default threshold" }
+      ]
+    },
+    {
+      "id": "sqlite-store",
+      "type": "database",
+      "label": "SQLite",
+      "sublabel": "people, vectors, cache, results",
+      "tag": "source of truth",
+      "sources": [
+        { "path": "backend/app/storage.py", "line": 22, "end_line": 67, "label": "tables" },
+        { "path": "backend/app/storage.py", "line": 136, "end_line": 150, "label": "store a person" }
+      ]
+    },
+    {
+      "id": "faiss-index",
+      "type": "database",
+      "label": "FAISS index",
+      "sublabel": "exact inner-product search",
+      "tag": "rebuildable",
+      "sources": [
+        { "path": "backend/app/storage.py", "line": 222, "end_line": 236, "label": "build from SQLite" },
+        { "path": "backend/app/storage.py", "line": 238, "end_line": 255, "label": "load or rebuild" }
+      ]
+    },
+    {
+      "id": "onnx-models",
+      "type": "database",
+      "label": "ONNX model files",
+      "sublabel": "det_10g, w600k_r50",
+      "sources": [
+        { "path": "backend/app/config.py", "line": 13, "end_line": 14, "label": "model paths" }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Local server process, 127.0.0.1:8000",
+      "wraps": ["security-gateway", "api-endpoints", "face-engine", "scrfd-detector", "arcface-embedder", "matcher"]
+    },
+    {
+      "kind": "region",
+      "label": "Local disk, never leaves the laptop",
+      "wraps": ["sqlite-store", "faiss-index", "onnx-models"]
+    }
+  ],
+  "connections": [
+    { "id": "user-to-ui", "from": "office-user", "to": "react-ui", "label": "folder + photo", "variant": "emphasis" },
+    { "id": "ui-to-gateway", "from": "react-ui", "to": "security-gateway", "label": "HTTP on loopback", "variant": "emphasis" },
+    { "id": "gateway-to-api", "from": "security-gateway", "to": "api-endpoints", "label": "allowed requests", "variant": "security" },
+    { "id": "api-to-engine", "from": "api-endpoints", "to": "face-engine", "label": "decoded photo", "variant": "emphasis" },
+    { "id": "engine-to-detector", "from": "face-engine", "to": "scrfd-detector", "label": "find faces" },
+    { "id": "engine-to-embedder", "from": "face-engine", "to": "arcface-embedder", "label": "aligned faces" },
+    { "id": "detector-loads-model", "from": "scrfd-detector", "to": "onnx-models", "label": "loads det_10g", "variant": "dashed" },
+    { "id": "embedder-loads-model", "from": "arcface-embedder", "to": "onnx-models", "label": "loads w600k_r50", "variant": "dashed" },
+    { "id": "api-to-sqlite", "from": "api-endpoints", "to": "sqlite-store", "label": "people + vectors" },
+    { "id": "sqlite-to-faiss", "from": "sqlite-store", "to": "faiss-index", "label": "rebuilt from", "variant": "dashed" },
+    { "id": "api-to-matcher", "from": "api-endpoints", "to": "matcher", "label": "face vectors", "variant": "emphasis" },
+    { "id": "matcher-to-faiss", "from": "matcher", "to": "faiss-index", "label": "similarity search" }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Enrol a folder (once)",
+      "items": [
+        "UI uploads each reference photo; the file name is the person's name",
+        "Unchanged photos are answered from a cache keyed by file hash",
+        "Largest face is aligned, embedded with its mirror image, and stored in SQLite",
+        "Finalize builds the FAISS index from SQLite"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "Identify a group photo",
+      "items": [
+        "Detector runs at up to 1280 px plus a 640 px pass",
+        "Each face is aligned and embedded",
+        "Matcher names a face only at similarity 0.35 or more, one name per person",
+        "Everyone else is Unknown, with the closest name as a hint"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Security gateway",
+      "items": [
+        "Host allow-list and origin checks, no CORS",
+        "HttpOnly SameSite=Strict session cookie, new on every launch",
+        "CSRF token header on every change",
+        "Upload size and type limits, rate limits, security headers"
+      ]
+    },
+    {
+      "dot": "slate",
+      "title": "Offline by design",
+      "items": [
+        "No network calls at runtime; models are files on disk",
+        "CPU only through ONNX Runtime",
+        "The server listens on the loopback address only"
+      ]
+    }
+  ]
+}
