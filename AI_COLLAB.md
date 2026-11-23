@@ -65,8 +65,11 @@ and sent it back twice: once for security and motion, once for the documents.
 - **AI suggested:** SQLite plus a brute-force NumPy comparison. It called a
   vector database "overkill for 50 vectors".
 - **I decided:** SQLite for structured data and FAISS for the vectors.
-- **Why:** _TODO (my words): add my reason here, for example scaling beyond 50
-  people or wanting a proper vector index in the design._
+- **Why:** face embeddings are vectors, and a vector index is the right tool
+  for searching them. Fifty people is the demo size, not a limit I wanted built
+  into the design: with FAISS the same code works for a much larger folder. I
+  also wanted the structured data (names, files, results) and the vectors kept
+  in stores that each suit their job.
 - **Result:** the AI implemented it with SQLite as the source of truth and an
   exact (flat) FAISS index that is rebuilt from SQLite, so my choice costs no
   accuracy. The trade-off is recorded in `ARCHITECTURE.md`.
@@ -87,9 +90,10 @@ and sent it back twice: once for security and motion, once for the documents.
 - **AI's first build:** bound the server to `127.0.0.1` and stopped there. The
   endpoints had no authentication.
 - **I decided:** the gateway needed to be more secure, with secured endpoints.
-- **Why:** _TODO (my words): confirm or replace._ A local server can still be
-  called by other web pages open in the same browser, and the data is faces
-  and names.
+- **Why:** the app stores people's faces and names, which is sensitive data,
+  and "it only runs locally" is not protection on its own: a local server can
+  still be called by any other web page open in the same browser. Open
+  endpoints would also have been a weak point in the system design.
 - **Result:** one gateway in front of every endpoint: host allow-list, origin
   checks, an HttpOnly session cookie, a CSRF token on every change, upload
   limits, rate limits, security headers, and the API docs switched off. 16
@@ -125,6 +129,19 @@ and sent it back twice: once for security and motion, once for the documents.
 - **Why:** install must be simple on the demo laptop. The cost, about 250
   lines of code to maintain, is noted in `ARCHITECTURE.md`.
 - **Evidence:** `backend/app/detector.py`, `backend/app/embedder.py`.
+
+### Decision 10: archify installed for this project only
+
+- **AI suggested:** it read archify's install instructions, did not install
+  anything on its own, and asked me to confirm the scope first, because the
+  install downloads and runs third-party code. It offered project-only or
+  global.
+- **I decided:** project only.
+- **Why:** the tool is needed for one diagram in this repository; nothing
+  should change on the rest of my machine for that.
+- **Result:** the diagram in `ARCHITECTURE.md`, with 22 file-and-line
+  references that archify verified against the committed source.
+- **Evidence:** chat excerpt #5; `docs/architecture.archify.json`.
 
 ## Where the AI was honest about limits
 
@@ -193,3 +210,11 @@ shortened where marked `[...]`.
 > remain [...] Plain HTTP: traffic is unencrypted, but it stays on the loopback
 > interface and never leaves the machine. Local file access: another program
 > running under your Windows account can read the `data/` folder directly.
+
+### Chat excerpt #5: confirming before installing archify
+
+> **AI:** Archify. Its instructions say to confirm scope with you before
+> installing. A project-only install for Claude Code would run these three
+> commands, which download and run code from archify.si [...]
+>
+> **me:** Yes, project only
